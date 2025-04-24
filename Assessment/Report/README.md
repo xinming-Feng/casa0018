@@ -8,9 +8,11 @@ Edge Impulse: https://studio.edgeimpulse.com/public/672207/live
 
 ## Introduction
 
-This project presents a vision-based system designed to detect whether a window is open or closed. When the camera identifies that the window is in an open state, a red LED light is activated. Conversely, when the system detects that the window is closed, a green LED light is illuminated. To date, there has been little precedent for using camera-based systems specifically to monitor the open or closed state of windows within this domain. However, related work has explored the use of depth cameras to identify the state of doors (Ramôa et al., 2020), which serves as an inspiring foundation for this investigation.
+This project introduces a vision-based system to detect whether a window is open or closed. A red LED lights up when the window is open, while a green LED indicates it is closed. Although camera-based window state detection is rare, related studies using depth cameras for door detection (Ramôa et al., 2020) provide useful insights.
 
-Motivated by this prior research, we propose that a similar approach could be extended to window state detection. Unclosed windows can be a source of significant inconvenience in everyday life—for example, external noise may disturb sleep, especially for individuals residing near busy roads. Additionally, open windows may allow insects to enter or permit rain to be blown indoors during inclement weather. This system aims to mitigate such issues by providing users with timely visual cues regarding window status, thereby addressing a seemingly trivial yet often overlooked aspect of daily living.
+Unclosed windows can cause various daily inconveniences, such as noise disturbances, insect intrusion, or rain entering the room. This system offers a practical solution by providing visual feedback, helping users manage window status more effectively in everyday life.
+
+
 
 ## Research Question
 
@@ -65,11 +67,11 @@ After data expansion, the model will no longer be overfitted. Meanwhile, I attem
 
 ## Model
 
-The core model employed in this project is a Convolutional Neural Network (CNN), selected for its strong performance in image classification tasks. Throughout the development process, the architecture was iteratively refined to better align with the project’s requirements. These refinements involved modifying the number and arrangement of convolutional and pooling layers, as well as experimenting with the placement and number of dense (fully connected) layers around the dropout layer to improve regularization and learning capacity.
+The core model used in this project is a Convolutional Neural Network (CNN), chosen for its proven strength in image-based classification tasks. Throughout development, the model architecture was gradually refined to meet the specific needs of the project. These refinements included adjusting the number and configuration of convolutional and pooling layers, as well as experimenting with the positioning of dense layers around the dropout layer to enhance both generalization and learning capacity. This iterative process helped improve model performance while maintaining a balance between complexity and overfitting.
 
 After multiple rounds of experimentation and performance evaluation, the final and most effective architecture was determined as follows:
 
-*Input Layer → 2D Convolution + Pooling Layer → Flatten → Dropout → Dense → Output Layer*
+* Input Layer → 2D Convolution + Pooling Layer → Flatten → Dropout → Dense → Output Layer *
 
 This configuration yielded the best results on the test set, achieving a maximum classification accuracy of 71.56%. The balance between model complexity and overfitting was carefully managed, and this architecture proved to be the most robust given the dataset and the binary classification task at hand.
 
@@ -93,22 +95,123 @@ In addition to CNN, transfer learning was explored as an alternative approach. S
 ## Experiments
 First of all, I used the default model of CNN as the baseline of my project. The specific results are as follows:
 
-![alt text](image-5.png)
-![alt text](image-6.png)
+
+<div align="center">
+<table>
+<tr>
+<td><img src="image-5.png" alt="traian"></td>
+<td><img src="image-6.png" alt="test"></td>
+</tr>
+</table>
+</div>
+
+The initial model performed poorly, with a test accuracy of only 44.95%, and evaluation metrics such as ROC curve and recall were also unsatisfactory. Training and validation losses showed signs of overfitting, as the training loss dropped quickly while the validation loss remained high.
+
+To address this, the architecture was simplified by reducing the convolutional layers from two to one. A Dense layer was also added after the Dropout layer to enhance feature representation. These adjustments improved the test accuracy to 57.01%, showing a notable performance gain.
+
+Interestingly, RGB images consistently outperformed grayscale images, suggesting that color information is important for this classification task—likely due to environmental and visual cues present in color images.
+
+After adjusting the model architecture, I adjusted the epoch, learning rate, batch size, dropout, Dense layer activation function, etc. The control variable method is used here.
+
+<div align="center">
+
+| Epochs | Test Accuracy |
+|:------:|:------------:|
+| 10     | 46.50%       |
+| 20     | 57.01%       |
+| 30     | 51.04%       |
+
+</div>
+
+<div align="center">
+
+| Learning Rate | Test Accuracy |
+|:------------:|:------------:|
+| 0.0005       | 57.01%       |
+| 0.0065       | 53.21%       |
+| 0.001        | 50.46%       |
+
+</div>
+
+<div align="center">
+
+| Batch Size | Test Accuracy |
+|:----------:|:------------:|
+| 16         | 48.52%       |
+| 32         | 57.01%       |
+| 64         | 53.21%       |
+
+</div>
+
+<div align="center">
+
+| Dropout Rate | Test Accuracy |
+|:-----------:|:------------:|
+| 0.5         | 57.01%       |
+| 0.6         | 53.21%       |
+| 0.65        | 53.27%       |
+
+</div>
+
+<div align="center">
+
+| Activation Function | Test Accuracy |
+|:-----------------:|:------------:|
+| Softmax           | 57.01%       |
+| Sigmoid           | 67.89%       |
+
+</div>
+
+I found that after replacing the activation function of the Dense layer, the accuracy of the model has been significantly improved. However, it is found from the loss variation trend of the model validation set that there is still a slight overfitting problem in the model. So in the end, I added Model.add (BatchNormalization()) to standardize the output of each layer, thereby accelerating the convergence of the model and improving the training stability. The final result is as follows:
+
+<div align="center">
+<table>
+<tr>
+<td><img src="image-7.png" alt="traian"></td>
+<td><img src="image-8.png" alt="test"></td>
+</tr>
+</table>
+</div>
+
+The accuracy rate of the test set reached 71.56%. Meanwhile, it can be observed that parameters such as roc curve and recall have significantly improved compared to the baseline, indicating that the model performance is also very good.
 
 ## Results and Observations
-Synthesis the main results and observations you made from building the project. Did it work perfectly? Why not? What worked and what didn't? Why? What would you do next if you had more time?  
+After training, the final model was converted to TensorFlow Lite (float32) format and deployed onto a Raspberry Pi device. A custom script (script.py) was developed to run inference in real time, with the Raspberry Pi connected to two external LED indicators—one red and one green.
 
-*Tip: probably ~300 words and remember images and diagrams bring results to life!*
+The model outputs two probability values between 0 and 1, corresponding to the likelihood of the window being in an open or closed state. By comparing these probabilities, the system determines the current state of the window:
+
+- If the probability of "open" is higher, the red LED is activated.
+
+- If the probability of "closed" is higher, the green LED lights up.
+
+This setup enables real-time, visual feedback on window status and serves as a practical proof of concept for the deployment of deep learning models on low-power embedded systems.
+
+<div align="center">
+    
+![MobileNetV1](image-9.png)
+</div>
+In real-world tests, the model accurately identified window states in most environments, achieving around 70% accuracy. However, performance dropped with camera movement or visual obstructions like curtains, causing unstable or incorrect outputs. Despite these issues, the system remains practical for everyday use.
+
+If more time and resources were available, several improvements would be prioritized:
+
+1. Dataset Expansion and Diversity:
+
+During data collection, it was noted that certain window types, such as those with mesh screens (e.g., insect screens) or semi-transparent drapes, were not well recognized. When a window was open but the mesh was closed, the model frequently misclassified the state as "closed." To improve robustness, the dataset should include more complex and diverse scenarios, particularly those involving partially obstructed views.
+
+
+
+2. Feature Representation:
+
+Current feature extraction relies heavily on visible cues such as window frames and handles. Given that glass is transparent, this approach limits recognition accuracy. In future iterations, incorporating depth features—such as those derived from stereo imaging or depth cameras—could allow the model to better infer spatial structures and object distances, which are especially valuable for recognizing transparent or semi-transparent surfaces.
+
+3.. Hardware and User Interface Enhancements:
+
+Future deployments could include additional components, such as an LCD display for more detailed feedback or auditory alerts to enhance user awareness. These improvements would make the system more user-friendly and practical for daily use.
 
 ## Bibliography
-*If you added any references then add them in here using this format:*
 
-1. Last name, First initial. (Year published). Title. Edition. (Only include the edition if it is not the first edition) City published: Publisher, Page(s). http://google.com
+1. Ramôa, J.G., Alexandre, L.A. & Mogo, S. (2020) 'Real-Time 3D Door Detection and Classification on a Low-Power Device', Proceedings of the 20th IEEE International Conference on Autonomous Robot Systems and Competitions (ICARSC 2020), Ponta Delgada, Azores, Portugal, April 2020, pp. 96–101. https://www.di.ubi.pt/~lfbaa/pubs/icarsc2020.pdf ​
 
-2. Last name, First initial. (Year published). Title. Edition. (Only include the edition if it is not the first edition) City published: Publisher, Page(s). http://google.com
-
-*Tip: we use [https://www.citethisforme.com](https://www.citethisforme.com) to make this task even easier.* 
 
 ----
 
@@ -117,8 +220,11 @@ Synthesis the main results and observations you made from building the project. 
 I, AUTHORS NAME HERE, confirm that the work presented in this assessment is my own. Where information has been derived from other sources, I confirm that this has been indicated in the work.
 
 
-*Digitally Sign by typing your name here*
+*Xinming Feng*
 
-ASSESSMENT DATE
+2025.04.24
 
-Word count: 
+Word count: 1450
+
+
+I admit that I used Chat-GPT(ChatGPT-4.5,OpenAI,https://chatgpt.com) to help me with report translation and grammar and typos correction.

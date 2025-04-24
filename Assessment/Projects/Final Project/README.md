@@ -21,7 +21,7 @@ Achieved 71.56% accuracy on test data.
 
 1. CNN outperformed MobileNetV1 (≈50% accuracy).
 
-2.RGB images yielded better results than grayscale.
+2. RGB images yielded better results than grayscale.
 
  - Deployment: Model converted to TensorFlow Lite, runs on Raspberry Pi, controls red/green LEDs based on predicted probabilities.
 
@@ -45,4 +45,11 @@ Achieved 71.56% accuracy on test data.
 Overall, the project shows strong potential for practical smart home use, with room for improvement in data and feature design.
 
 # files meaning
+camera.py :Adjust the picture taken by the phone to the camera parameters of the Raspberry PI.
+
+ei-window_final-classifier-tensorflow-lite-float32-model.3.lite : The best trained model
+
+extend.py : Data augmentation script
+
+script.py : Run script on Raspberry PI
 
